@@ -1,0 +1,8 @@
+INSTALLER/node_modules/
+INSTALLER/dist/
+INSTALLER/*.tsbuildinfo
+INSTALLER/vite.config.js
+INSTALLER/vite.config.d.ts
+INSTALLER/.env
+INSTALLER/.env.local
+INSTALLER/.env.*.local
