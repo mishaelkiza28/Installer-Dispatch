@@ -1,0 +1,23 @@
+# Applies when you run `supabase functions deploy` from this project.
+#
+# All three functions here need verify_jwt = false, for two different
+# reasons:
+#
+# - dispatch-work-order: called from the browser with a real user
+#   session, but the platform's automatic JWT check also blocks the
+#   CORS preflight (which never carries an Authorization header) before
+#   your code gets a chance to answer it. The function validates the
+#   caller's session itself instead — see its Deno.serve() body.
+#
+# - sms-inbound / whatsapp-inbound: called by Africa's Talking and Meta
+#   directly, neither of which can send a Supabase-issued JWT at all.
+#   With verify_jwt left on, every inbound reply would be rejected
+#   before your code ever saw it.
+[functions.dispatch-work-order]
+verify_jwt = false
+
+[functions.sms-inbound]
+verify_jwt = false
+
+[functions.whatsapp-inbound]
+verify_jwt = false
