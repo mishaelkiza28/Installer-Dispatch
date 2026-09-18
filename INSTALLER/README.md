@@ -1,217 +1,140 @@
-# Work Order Dispatch
+# Installer Dispatch
 
-A standalone platform for assigning and dispatching work orders to
-field technicians. Dispatchers work from a web console; technicians
-never install or open anything — every dispatch and every status
-update travels over SMS, WhatsApp, and email, using their existing
-phone number.
+A small, standalone platform for **receiving work orders and dispatching them to installers by email**.
 
-## How it works
+- The office works from a web console: work orders come in by typing them up or importing a spreadsheet, get assigned to an installer, and are emailed out with one click.
+- Installers never log in or install anything. Each job email has **Accept / Can't take it / I'm on site / Job done** buttons. A tap opens a simple mobile page, they confirm, and the office board updates live.
+- The office gets an email whenever an installer accepts, declines or finishes a job.
+- Every step is kept in a per-job history.
 
-1. A dispatcher creates a work order and assigns a technician in the
-   console.
-2. Clicking **Dispatch** sends the job to that technician on whichever
-   channels they're reachable on, and moves the work order to
-   `dispatched`.
-3. The technician replies from their ordinary messaging app:
-   - `ACK` (or `1` / `OK`) → work order moves to `acknowledged`
-   - `START` → moves to `in_progress`
-   - `DONE` (or `COMPLETE`) → moves to `completed`
-4. The dispatcher marks a completed job **verified** once they've
-   confirmed it, closing the loop.
-5. Every outbound message and every inbound reply is written to
-   `notification_log` — open a work order's timeline in the console to
-   see the full back-and-forth.
+All notifications are email only, sent through a Gmail account (free, no domain needed).
 
-Nothing here requires a technician to have an app, log in, or be
-online in any special way beyond having phone signal.
+## How a job moves
+
+```
+ Unassigned ──Email──▶ Emailed ──Accept──▶ Accepted ──On site──▶ On site ──Done──▶ Done ──Verify──▶ Verified
+     ▲                    │                   │                     │
+     └──── Decline / Recall (office) ◀────────┴─────────────────────┘      Cancel from any open state
+```
+
+| Who | Action | What happens |
+|---|---|---|
+| Office | **Email** (single or "Email N ready") | Installer gets the job email; the job moves to *Emailed* |
+| Installer | **Accept** | *Accepted*, office emailed |
+| Installer | **Can't take it** (optional reason) | Back to *Unassigned* with a "Declined by…" note, links stop working, office emailed |
+| Installer | **I'm on site** | *On site* |
+| Installer | **Job done** (optional note) | *Done*, office emailed |
+| Office | **Mark verified** | *Verified* (closed) |
+| Office | **Re-send email** | Same links re-sent as a reminder |
+| Office | **Copy installer link** | Paste the job link into WhatsApp/SMS yourself if email is slow |
+| Office | **Recall** | Back to *Unassigned*, installer told the job is withdrawn, links stop working |
+| Office | **Cancel** / **Reopen** | Installer told if it was out with them |
+
+## Setup (about 10 minutes)
+
+The database and the two server functions are already deployed to the `Installer-Dispatch` Supabase project.
+Three things are left, and only you can do them:
+
+### 1. Let it send email from Gmail
+
+1. Pick the Gmail account that should send the jobs. A dedicated one such as `tsgdispatch@gmail.com` is best, because installers will see it and reply to it.
+2. On that account, turn on **2-Step Verification**: Google Account → Security.
+3. Create an **app password**: Google Account → Security → 2-Step Verification → **App passwords**. Name it "Dispatch" and copy the 16-character password.
+4. In Supabase, open the **Installer-Dispatch** project → **Edge Functions → Secrets** and add:
+
+   | Name | Value |
+   |---|---|
+   | `GMAIL_USER` | the Gmail address |
+   | `GMAIL_APP_PASSWORD` | the 16-character app password |
+   | `EMAIL_FROM_NAME` *(optional)* | e.g. `TSG Solar Dispatch` |
+
+Gmail allows about 500 emails a day, which is plenty for this.
+
+### 2. Create your dispatcher login
+
+Supabase → **Authentication → Users → Add user → Create new user**: enter your email (`mishaelkiza28@gmail.com` is already on the dispatchers list), set a password, and tick **Auto Confirm User**.
+
+Only emails on the dispatchers list can see anything. You can add colleagues later under **Settings** in the console, then create their login the same way. Also turn off public sign-ups: **Authentication → Sign In / Providers → Email → "Allow new users to sign up"** off. (Strangers who sign up would see nothing anyway, but there's no reason to let them.)
+
+### 3. Publish the console
+
+Push this repo to GitHub. The workflow in `.github/workflows/deploy.yml` builds the console and publishes it to GitHub Pages:
+**https://mishaelkiza28.github.io/Installer-Dispatch/**
+
+If Pages isn't on yet, go to the repo's **Settings → Pages** and set **Source** to **GitHub Actions**.
+
+The Supabase URL and publishable key are in `.env.production`. They're meant to be public, because the data is protected by row-level security. That means no GitHub secrets are needed, and any old `VITE_SUPABASE_*` secrets are ignored.
+
+Then sign in, open **Settings**, check the company name, office phone and office notification emails, and click **Send test email**.
+
+## Daily use
+
+1. **Installers** page: add each installer's name and email. Phone and area are optional.
+2. **Board → New work order**, or **Import** a spreadsheet.
+3. Pick an installer on the card and click **Email**. For a batch, assign installers first, then click **Email N ready**.
+4. Watch cards move as installers respond. "Emailed" cards turn amber after 4 hours with no reply. Re-send or call them.
+5. When a job reaches **Done**, check it and click **Mark verified**.
+
+### Importing a spreadsheet
+
+**Import** accepts `.xlsx` or `.csv` files, or rows pasted straight from Excel or Google Sheets. The first row must be headings. Common names are recognised automatically, and you can fix the mapping before importing:
+
+| Field | Headings it recognises |
+|---|---|
+| Title | Title, Job, Task, Work order |
+| Job type | Job type, Type, Category, Service |
+| Client name | Client, Customer, Name, Beneficiary |
+| Client phone | Phone, Telephone, Mobile, Contact |
+| Site / address | Address, Site, Location, Village, Plot |
+| District / area | District, Area, Region, Town |
+| Scheduled date | Date, Install date, Scheduled, Due (day first: `21/09/2026`, or `2026-09-21`, or Excel dates) |
+| Priority | Priority, Urgency (`urgent`/`high` → urgent, `low` → low) |
+| Notes | Notes, Description, Details, Instructions |
+| Installer | Installer, Installer email, Technician, Assigned to (matched by email or name) |
+
+If a row has no title, one is built from job type and client name. Rows with a matched installer arrive ready to email. **Template** downloads a sample CSV.
 
 ## Project layout
 
 ```
-supabase/migrations/0001_init.sql     — schema: technicians, work_orders, notification_log
-supabase/functions/dispatch-work-order — sends the notification(s) and advances status to "dispatched"
-supabase/functions/sms-inbound         — Africa's Talking inbound SMS webhook
-supabase/functions/whatsapp-inbound    — Meta Cloud API inbound WhatsApp webhook
-src/                                   — the dispatcher web console (Vite + React + TypeScript + Tailwind)
-.github/workflows/deploy.yml           — builds the console and publishes it to GitHub Pages
+supabase/migrations/0001_init.sql         schema, guarded status transitions, row-level security
+supabase/functions/work-order-action      office actions that email (dispatch, re-send, recall, cancel, test)
+supabase/functions/installer-action       public endpoint behind the installer's email buttons
+supabase/functions/_shared/email.ts       Gmail SMTP sender + the email templates
+src/                                      console + installer job page (Vite, React, TypeScript, Tailwind)
+.github/workflows/deploy.yml              builds and publishes to GitHub Pages on every push to main
 ```
 
-## 1. Set up Supabase
+### How it stays safe
 
-1. Create a new Supabase project (this is deliberately a separate
-   project from Solar Garage — nothing here depends on it).
-2. In the SQL editor, run `supabase/migrations/0001_init.sql`.
-3. Create your own dispatcher login: Authentication → Users → Add
-   user. Any authenticated user can manage the whole system for now
-   (see the RLS policies in the migration if you later want more than
-   one role, e.g. read-only office staff).
-4. Copy `.env.example` to `.env.local` and fill in your project URL
-   and anon key (Project Settings → API).
+- **Dispatchers**: every table is behind row-level security that checks the signed-in user's confirmed email against the `dispatchers` list.
+- **Installers**: each dispatch creates a random 32-character token that goes only into that installer's email links. It stops working the moment the job is declined, recalled or cancelled. The installer page shows only that one job.
+- **Status**: status can only change through `wo_transition()`, which enforces the allowed moves and writes the history. The browser can't set status or tokens directly.
+- **Links**: email buttons open a confirmation page instead of acting immediately, so email link scanners can't accept jobs by accident.
 
-## 2. Set up notification providers
-
-**SMS — Africa's Talking.** Sign up at africastalking.com, create an
-app, and grab your username + API key. Local routing to MTN/Airtel
-Uganda numbers runs roughly UGX 20–35 per SMS — a fraction of a US
-cent — dramatically cheaper than Twilio/Plivo/similar international
-gateways, which route Uganda traffic at $0.11–0.26 per SMS.
-
-**WhatsApp — Meta Cloud API.** Create a Meta Business account, add a
-WhatsApp Business phone number, and get a permanent access token
-(Meta's docs walk through this — it changes occasionally, so follow
-their current flow rather than a fixed set of steps here). You'll also
-need to create and get approval for a message template (Meta Business
-Manager → WhatsApp Manager → Message Templates) — business-initiated
-messages can't use free-form text. There's no subscription fee for API
-access itself, just a small per-message rate that varies by country
-and message category — check the live rate card at
-developers.facebook.com before relying on a specific number, since
-Meta revises it periodically. One important date: **from October 1,
-2026, Meta starts charging for every message, including replies sent
-within what used to be a free 24-hour window** — budget for WhatsApp
-as a paid channel from day one.
-
-**Email — Resend.** Sign up at resend.com and create an API key. The
-free tier comfortably covers this volume; it's the only channel here
-that's genuinely $0.
-
-Set all of these as Edge Function secrets — see
-`supabase/functions/.env.example` for the full list and the exact
-command. Don't put them in a `.env` file; Edge Functions don't read
-one in production.
-
-## 3. Deploy the Edge Functions
-
-```bash
-supabase functions deploy dispatch-work-order
-supabase functions deploy sms-inbound
-supabase functions deploy whatsapp-inbound
-```
-
-If you haven't already, link the CLI to your project first
-(`supabase link --project-ref <your-project-ref>`) — that's what makes
-it pick up `supabase/config.toml`, which turns off the platform's
-automatic JWT check for all three functions. That check normally
-protects an endpoint from anonymous callers, but here it actively
-breaks things: it also blocks the CORS preflight request the browser
-sends before `dispatch-work-order` (preflights never carry an
-Authorization header), and it would reject every inbound webhook from
-Africa's Talking or Meta outright, since neither can send a
-Supabase-issued JWT. `dispatch-work-order` validates the caller's
-session itself instead, so it stays restricted to signed-in
-dispatchers despite the platform check being off.
-
-Then register the webhook URLs each provider gives you:
-- Africa's Talking dashboard → SMS → your shortcode → set the
-  **Callback URL** to your deployed `sms-inbound` function URL.
-- Meta Business Manager → WhatsApp → Configuration → Webhook → set the
-  URL to your deployed `whatsapp-inbound` function, and the verify
-  token to whatever you set as `WHATSAPP_VERIFY_TOKEN`.
-
-## 4. Run the console locally
+## Running locally
 
 ```bash
 npm install
 npm run dev
 ```
 
-Sign in with the dispatcher account you created in step 1.
+`.env.production` is used for builds. For `npm run dev`, copy it to `.env.local`.
 
-## 5. Host the console on GitHub Pages
+To redeploy the functions after changing them (Supabase CLI):
 
-GitHub Pages only serves static files, so this deploys the `src/`
-console — a plain HTML/JS/CSS bundle once built. It does **not** and
-cannot host `supabase/functions/`; those stay deployed on Supabase
-exactly as in step 3, regardless of where the console itself lives.
-The console just calls out to your Supabase project's URL from the
-browser, so the two are independent.
+```bash
+supabase link --project-ref <project-ref>
+supabase functions deploy work-order-action --no-verify-jwt
+supabase functions deploy installer-action --no-verify-jwt
+```
 
-1. **Push this project to a GitHub repository** (new repo, then the
-   usual `git init && git add . && git commit -m "init" && git remote
-   add origin <your-repo-url> && git push -u origin main`).
-
-2. **Add two repository secrets** — Settings → Secrets and variables →
-   Actions → New repository secret:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-
-   (the same two values from your `.env.local`). These get baked into
-   the static build at compile time — that's expected and safe, since
-   the anon key is designed to be public; Row Level Security is what
-   actually protects the data, not keeping this key secret.
-
-3. **The workflow is already included** at
-   `.github/workflows/deploy.yml` — it builds the app with those
-   secrets and publishes `dist/` on every push to `main`. You don't
-   need to write or copy anything for this step.
-
-4. **Turn on Pages** — repo Settings → Pages → under "Build and
-   deployment", set **Source** to **GitHub Actions** (not "Deploy from
-   a branch"). Nothing else to configure here.
-
-5. **Push to `main`.** The workflow runs automatically; watch it under
-   the Actions tab. When it finishes, the same Settings → Pages screen
-   shows your live URL — either `https://<username>.github.io/<repo>/`
-   or `https://<username>.github.io/` if the repo is named
-   `<username>.github.io`. `vite.config.ts` already uses a relative
-   base path, so it works at either without editing anything.
-
-6. **Re-deploy after any future change** by just pushing to `main` —
-   or trigger it manually from the Actions tab (the workflow has
-   `workflow_dispatch` enabled) if you need to force a rebuild without
-   a new commit.
-
-One thing worth doing before this goes live: GitHub Pages sites are
-public to anyone with the URL (private-repo Pages needs a paid GitHub
-plan, and even then the site itself is still just static files with no
-access control of its own). The console has no signup form, but
-Supabase Auth's email/password sign-up is enabled by default at the
-API level — worth turning it off (Authentication → Sign In / Providers
-→ Email → disable "Allow new users to sign up") so account creation
-stays something only you do from the dashboard, since the actual
-dispatcher accounts are the only gate standing between a visitor and
-your data once the console is reachable by anyone.
-
-## No-cost alternative
-
-If you want to run this with zero notification spend while you're
-testing, or as a permanent lower-cost mode: skip the WhatsApp and SMS
-secrets entirely. `dispatch-work-order` degrades gracefully — it only
-sends on the channels a technician has an address for and a secret
-configured for, so with only `RESEND_API_KEY` set, every dispatch goes
-out by email at no cost. The trade-off is real: email doesn't get
-opened as promptly as a text message, so a technician might not see an
-urgent job right away. A Telegram bot (not included here, but simple
-to add following the same pattern as `sms-inbound`) is the other
-genuinely free option — no per-message cost ever — at the price of
-each technician installing Telegram once, which is a bigger ask in
-Uganda than WhatsApp.
+Both functions check the caller themselves: the dispatcher's session for the first, the email token for the second. The platform's JWT check is therefore off; see `supabase/config.toml`.
 
 ## Troubleshooting
 
-**"Could not reach the dispatch function" in the console.** This is a
-browser-level failure (the `fetch()` never got a response), not an
-error from your code — almost always one of:
-
-1. The function isn't deployed yet — check Supabase Dashboard → Edge
-   Functions for `dispatch-work-order`. If it's missing, deploy it
-   (step 3).
-2. `supabase/config.toml` hasn't taken effect — it only applies on
-   deploy, and only if the CLI is linked to your project
-   (`supabase link --project-ref <ref>`). Redeploy after linking.
-3. To confirm which: Dashboard → Edge Functions → `dispatch-work-order`
-   → Logs. **Zero log entries for your attempt** means the platform's
-   JWT gate blocked the request before your code ran (cause 2, above)
-   — the function never actually executed.
-
-## Extending it
-
-- **Multiple dispatchers with different permissions** — split the
-  single `authenticated` RLS policy into role-specific ones.
-- **Recurring/scheduled work orders** — add a `pg_cron` job that
-  inserts new work orders on a schedule and calls `dispatch-work-order`
-  automatically.
-- **Photo proof of completion** — WhatsApp media messages can be
-  captured in `whatsapp-inbound` (the payload includes an `image`
-  field with a media ID) and stored in Supabase Storage.
+- **"Email isn't set up yet"**: the two Gmail secrets are missing. See step 1.
+- **"Gmail rejected the login"**: use the 16-character app password, not the normal Gmail password, and make sure 2-Step Verification is on for that account.
+- **Installer says the link doesn't work**: the job was probably recalled, declined or cancelled. Open the job and use **Copy installer link** or **Re-send email** to get the current link.
+- **Installer didn't get the email**: ask them to check spam, and to add the sender to their contacts. Or use **Copy installer link** and send it by WhatsApp.
+- **Board doesn't update by itself**: it also refreshes when you come back to the tab. Reloading always shows the latest.

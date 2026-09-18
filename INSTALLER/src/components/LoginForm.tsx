@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase, configured } from "../lib/supabaseClient";
+import { Button, Input } from "./ui";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -11,40 +12,33 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError(error.message);
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) setError(error.message === "Invalid login credentials" ? "Wrong email or password." : error.message);
     setLoading(false);
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg px-4">
-      <form onSubmit={signIn} className="w-full max-w-sm bg-surface border border-border rounded-lg p-6 space-y-4">
+      <form onSubmit={signIn} className="w-full max-w-sm bg-surface border border-border rounded-xl p-6 space-y-4">
         <div>
           <h1 className="font-display text-xl">Dispatch console</h1>
-          <p className="text-xs text-muted mt-1">Sign in to assign and dispatch work orders.</p>
+          <p className="text-xs text-muted mt-1">Sign in to receive, assign and email work orders.</p>
         </div>
-        <input
-          className="w-full bg-raised border border-border rounded px-3 py-2 text-sm"
-          placeholder="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          className="w-full bg-raised border border-border rounded px-3 py-2 text-sm"
+        {!configured && (
+          <p className="text-xs text-[#e7877e]">This build has no Supabase URL/key — see .env.example.</p>
+        )}
+        <Input placeholder="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input
           placeholder="Password"
           type="password"
+          autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error && <p className="text-xs text-status-cancelled">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-accent text-accent-ink rounded px-3 py-2 text-sm font-medium disabled:opacity-50"
-        >
+        {error && <p className="text-xs text-[#e7877e]">{error}</p>}
+        <Button type="submit" variant="primary" disabled={loading} className="w-full">
           {loading ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
     </div>
   );

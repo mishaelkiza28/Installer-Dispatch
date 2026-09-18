@@ -1,51 +1,105 @@
 export type WorkOrderStatus =
   | "unassigned"
   | "dispatched"
-  | "acknowledged"
-  | "in_progress"
+  | "accepted"
+  | "on_site"
   | "completed"
   | "verified"
   | "cancelled";
 
-export type WorkOrderPriority = "low" | "normal" | "urgent";
+export type Priority = "low" | "normal" | "urgent";
 
-export type NotificationChannel = "sms" | "whatsapp" | "email";
-
-export interface Technician {
+export interface Installer {
   id: string;
   name: string;
-  phone_e164: string;
-  whatsapp_opt_in: boolean;
-  email: string | null;
+  email: string;
+  phone: string | null;
+  area: string | null;
+  notes: string | null;
   active: boolean;
   created_at: string;
 }
 
 export interface WorkOrder {
   id: string;
+  ref_no: number;
   title: string;
-  description: string | null;
+  job_type: string | null;
+  client_name: string | null;
+  client_phone: string | null;
   site_address: string | null;
-  priority: WorkOrderPriority;
+  district: string | null;
+  scheduled_for: string | null;
+  priority: Priority;
+  description: string | null;
   status: WorkOrderStatus;
   assigned_to: string | null;
+  installer_token: string | null;
+  completion_note: string | null;
+  last_declined_by: string | null;
+  last_decline_reason: string | null;
+  source: "console" | "import";
   created_at: string;
+  updated_at: string;
   dispatched_at: string | null;
-  acknowledged_at: string | null;
-  started_at: string | null;
+  accepted_at: string | null;
+  on_site_at: string | null;
   completed_at: string | null;
   verified_at: string | null;
-  technicians?: Technician | null;
+  cancelled_at: string | null;
+  assignee?: Pick<Installer, "id" | "name" | "email" | "active"> | null;
+  decliner?: Pick<Installer, "name"> | null;
 }
 
-export interface NotificationLogEntry {
-  id: string;
-  work_order_id: string | null;
-  technician_id: string | null;
-  channel: NotificationChannel;
-  direction: "outbound" | "inbound";
-  body: string;
-  provider_message_id: string | null;
-  status: "queued" | "sent" | "delivered" | "failed" | "received";
+/** Fields a dispatcher can write directly. */
+export type WorkOrderInput = Pick<
+  WorkOrder,
+  | "title"
+  | "job_type"
+  | "client_name"
+  | "client_phone"
+  | "site_address"
+  | "district"
+  | "scheduled_for"
+  | "priority"
+  | "description"
+  | "assigned_to"
+>;
+
+export interface WorkOrderEvent {
+  id: number;
+  work_order_id: string;
+  kind: string;
+  actor: "office" | "installer" | "system";
+  actor_name: string | null;
+  message: string | null;
   created_at: string;
+}
+
+export interface AppSettings {
+  company_name: string;
+  office_phone: string | null;
+  office_emails: string[];
+  app_url: string | null;
+}
+
+/** What the installer's job page gets back — no internal ids or tokens. */
+export interface PublicJob {
+  ref_no: number;
+  title: string;
+  job_type: string | null;
+  client_name: string | null;
+  client_phone: string | null;
+  site_address: string | null;
+  district: string | null;
+  scheduled_for: string | null;
+  priority: Priority;
+  description: string | null;
+  status: WorkOrderStatus;
+  completion_note: string | null;
+  installer_name: string | null;
+  dispatched_at: string | null;
+  accepted_at: string | null;
+  on_site_at: string | null;
+  completed_at: string | null;
 }

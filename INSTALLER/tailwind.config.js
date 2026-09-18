@@ -15,8 +15,8 @@ export default {
         status: {
           unassigned: "#5B6470",
           dispatched: "#E8A33D",
-          acknowledged: "#4FA3D1",
-          progress: "#7C86E8",
+          accepted: "#4FA3D1",
+          onsite: "#7C86E8",
           completed: "#4CAF7D",
           verified: "#2F8F5E",
           cancelled: "#C1554A",

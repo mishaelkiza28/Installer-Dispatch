@@ -35,13 +35,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The Supabase URL and publishable key come from INSTALLER/.env.production
+      # (they're public by design — row-level security protects the data).
       - name: Build
         run: |
           npm run build
           cp dist/index.html dist/404.html
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
