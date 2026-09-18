@@ -32,8 +32,8 @@ All notifications are email only, sent through a Gmail account (free, no domain 
 
 ## Setup (about 10 minutes)
 
-The database and the two server functions are already deployed to the `Installer-Dispatch` Supabase project.
-Three things are left, and only you can do them:
+The database and the two server functions are already deployed to the **Installer-Dispatch** Supabase project (OEL Dispatch organisation, ref `epurrngbmlcwwlozyfsh`).
+What's left:
 
 ### 1. Let it send email from Gmail
 
@@ -50,11 +50,13 @@ Three things are left, and only you can do them:
 
 Gmail allows about 500 emails a day, which is plenty for this.
 
-### 2. Create your dispatcher login
+### 2. Dispatcher logins
 
-Supabase → **Authentication → Users → Add user → Create new user**: enter your email (`mishaelkiza28@gmail.com` is already on the dispatchers list), set a password, and tick **Auto Confirm User**.
+Your login (`mishaelkiza28@gmail.com`) already exists and is on the dispatchers list.
 
-Only emails on the dispatchers list can see anything. You can add colleagues later under **Settings** in the console, then create their login the same way. Also turn off public sign-ups: **Authentication → Sign In / Providers → Email → "Allow new users to sign up"** off. (Strangers who sign up would see nothing anyway, but there's no reason to let them.)
+To add a colleague: add their email under **Settings** in the console, then create their login in Supabase → **Authentication → Users → Add user → Create new user** (tick **Auto Confirm User**). Only emails on the dispatchers list can see anything.
+
+Also turn off public sign-ups: **Authentication → Sign In / Providers → Email → "Allow new users to sign up"** off. (Strangers who sign up would see nothing anyway, but there's no reason to let them.)
 
 ### 3. Publish the console
 
@@ -124,7 +126,7 @@ npm run dev
 To redeploy the functions after changing them (Supabase CLI):
 
 ```bash
-supabase link --project-ref <project-ref>
+supabase link --project-ref epurrngbmlcwwlozyfsh
 supabase functions deploy work-order-action --no-verify-jwt
 supabase functions deploy installer-action --no-verify-jwt
 ```

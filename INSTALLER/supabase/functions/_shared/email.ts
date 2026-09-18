@@ -138,9 +138,19 @@ export function formatDate(d: string | null): string | null {
   });
 }
 
+function isUrl(s: string | null): s is string {
+  return !!s && /^https?:\/\//i.test(s.trim());
+}
+
+/** A pasted Google Maps pin is used as-is; otherwise search the address. */
 function mapsLink(job: JobForEmail): string | null {
+  if (isUrl(job.site_address)) return job.site_address.trim();
   const q = [job.site_address, job.district].filter(Boolean).join(", ");
   return q ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q) : null;
+}
+
+function siteText(job: JobForEmail): string {
+  return [isUrl(job.site_address) ? null : job.site_address, job.district].filter(Boolean).join(", ");
 }
 
 function detailRows(job: JobForEmail): [string, string, string][] {
@@ -155,12 +165,20 @@ function detailRows(job: JobForEmail): [string, string, string][] {
     "Phone",
     job.client_phone,
     job.client_phone
-      ? `<a href="tel:${esc(job.client_phone.replace(/\s+/g, ""))}" style="color:#1a5fb4">${esc(job.client_phone)}</a>`
+      ? `<a href="tel:${esc(job.client_phone.replace(/[^\d+]/g, ""))}" style="color:#1a5fb4">${esc(job.client_phone)}</a>`
       : undefined,
   );
-  const site = [job.site_address, job.district].filter(Boolean).join(", ");
+  const site = siteText(job);
   const maps = mapsLink(job);
-  add("Site", site || null, site ? `${esc(site)}${maps ? ` &nbsp;<a href="${maps}" style="color:#1a5fb4">Map</a>` : ""}` : undefined);
+  const pinned = isUrl(job.site_address);
+  if (site || maps) {
+    const linkLabel = pinned ? "Open pinned location" : "Map";
+    rows.push([
+      "Site",
+      `${esc(site)}${maps ? `${site ? " &nbsp;" : ""}<a href="${esc(maps)}" style="color:#1a5fb4">${linkLabel}</a>` : ""}`,
+      [site, maps].filter(Boolean).join(" — "),
+    ]);
+  }
   add("Scheduled", formatDate(job.scheduled_for));
   add("Priority", job.priority === "normal" ? null : job.priority.toUpperCase());
   add("Notes", job.description, job.description ? esc(job.description).replace(/\n/g, "<br>") : undefined);
@@ -215,7 +233,7 @@ export function jobEmail(
   opts: { reminder?: boolean } = {},
 ): { subject: string; text: string; html: string } {
   const ref = refLabel(job.ref_no);
-  const where = job.district || job.site_address;
+  const where = job.district || (isUrl(job.site_address) ? null : job.site_address);
   const subject = `${opts.reminder ? "Reminder: " : ""}${job.priority === "urgent" ? "URGENT · " : ""}New job ${ref}: ${job.title}${
     where ? " — " + where : ""
   }`;
@@ -312,7 +330,7 @@ export function officeUpdateEmail(
       : `${ref} ${verb === "is on site for" ? "on site" : verb} — ${installerName}`;
   const headline = `${installerName} ${verb} ${ref}`;
   const inner = `<b>${esc(job.title)}</b>${job.client_name ? ` for ${esc(job.client_name)}` : ""}${
-    job.district || job.site_address ? `, ${esc(job.district || job.site_address)}` : ""
+    siteText(job) ? `, ${esc(job.district || siteText(job))}` : ""
   }.${
     note
       ? `<div style="margin-top:12px;padding:10px 12px;background:#f6f7f8;border-radius:6px"><span style="color:#6b7680;font-size:13px">${

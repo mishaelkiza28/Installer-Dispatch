@@ -164,7 +164,7 @@ export function WorkOrderForm({ existing, installers, onClose, onSaved }: Props)
         <Field label="Client phone">
           <Input {...text("client_phone")} placeholder="+256 7xx xxx xxx" inputMode="tel" />
         </Field>
-        <Field label="Site / address">
+        <Field label="Site / address" hint="An address, or paste a Google Maps pin link.">
           <Input {...text("site_address")} placeholder="Plot 14, Ntinda Road" />
         </Field>
         <Field label="District / area">

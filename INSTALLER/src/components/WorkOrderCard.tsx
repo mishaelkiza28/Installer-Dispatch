@@ -1,7 +1,7 @@
 import { AlertTriangle, CalendarDays, MapPin, Send, User } from "lucide-react";
 import type { Installer, WorkOrder } from "../types";
 import type { Actions } from "../hooks/useActions";
-import { fmtDate, isOverdue, ref, timeAgo } from "../lib/format";
+import { fmtDate, isOverdue, isUrl, ref, timeAgo } from "../lib/format";
 import { STATUS_BORDER } from "./StatusBadge";
 import { Button } from "./ui";
 
@@ -34,7 +34,7 @@ function sinceLabel(wo: WorkOrder): string | null {
 export function WorkOrderCard({ wo, installers, actions, onOpen }: Props) {
   const busy = actions.busy.has(wo.id);
   const overdue = isOverdue(wo.scheduled_for, wo.status);
-  const where = [wo.district, wo.site_address].filter(Boolean)[0];
+  const where = wo.district || (isUrl(wo.site_address) ? "Pinned location" : wo.site_address);
   const stale = wo.status === "dispatched" && wo.dispatched_at && Date.now() - new Date(wo.dispatched_at).getTime() > 4 * 3600e3;
 
   return (

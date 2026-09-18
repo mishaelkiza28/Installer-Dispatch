@@ -4,7 +4,7 @@ import type { Installer, WorkOrder, WorkOrderEvent } from "../types";
 import type { Actions } from "../hooks/useActions";
 import { useEvents } from "../hooks/useData";
 import { appUrl } from "../lib/api";
-import { fmtDate, fmtDateTime, isOverdue, mapsUrl, PRIORITY_LABEL, ref, telHref } from "../lib/format";
+import { fmtDate, fmtDateTime, isOverdue, isUrl, mapsUrl, PRIORITY_LABEL, ref, siteText, telHref } from "../lib/format";
 import { StatusBadge } from "./StatusBadge";
 import { WorkOrderForm } from "./WorkOrderForm";
 import { Button, useToast } from "./ui";
@@ -105,10 +105,10 @@ export function WorkOrderDrawer({ wo, installers, actions, onClose, onChanged }:
             <Row label="Site">
               {(wo.site_address || wo.district) && (
                 <span>
-                  {[wo.site_address, wo.district].filter(Boolean).join(", ")}{" "}
+                  {siteText(wo.site_address, wo.district)}{" "}
                   {maps && (
                     <a href={maps} target="_blank" rel="noreferrer" className="text-accent inline-flex items-center gap-0.5 text-xs">
-                      map <ExternalLink size={10} />
+                      {isUrl(wo.site_address) ? "pinned location" : "map"} <ExternalLink size={10} />
                     </a>
                   )}
                 </span>

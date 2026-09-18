@@ -1,7 +1,7 @@
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { CalendarDays, CheckCircle2, MapPin, Phone, User, Wrench } from "lucide-react";
 import { installerAction } from "../lib/api";
-import { fmtDate, fmtDateTime, mapsUrl, ref, telHref } from "../lib/format";
+import { fmtDate, fmtDateTime, isUrl, mapsUrl, ref, siteText, telHref } from "../lib/format";
 import type { PublicJob, WorkOrderStatus } from "../types";
 
 type Action = "accept" | "decline" | "on_site" | "done";
@@ -209,7 +209,7 @@ export function InstallerJobPage({ token, initialAction }: { token: string; init
                 )}
                 {(job.site_address || job.district) && (
                   <Line icon={<MapPin size={18} />}>
-                    {[job.site_address, job.district].filter(Boolean).join(", ")}
+                    {siteText(job.site_address, job.district)}
                     {mapsUrl(job.site_address, job.district) && (
                       <>
                         {" "}
@@ -217,9 +217,9 @@ export function InstallerJobPage({ token, initialAction }: { token: string; init
                           href={mapsUrl(job.site_address, job.district)!}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[#1a5fb4] underline whitespace-nowrap"
+                          className="text-[#1a5fb4] underline whitespace-nowrap font-semibold"
                         >
-                          Open map
+                          {isUrl(job.site_address) ? "Open pinned location" : "Open map"}
                         </a>
                       </>
                     )}

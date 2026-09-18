@@ -74,9 +74,20 @@ export function isOverdue(scheduled: string | null, status: WorkOrderStatus): bo
   return scheduled < todayIso();
 }
 
+export function isUrl(s: string | null | undefined): s is string {
+  return !!s && /^https?:\/\//i.test(s.trim());
+}
+
+/** A pasted Google Maps pin is used as-is; otherwise search the address. */
 export function mapsUrl(address: string | null, district: string | null): string | null {
+  if (isUrl(address)) return address.trim();
   const q = [address, district].filter(Boolean).join(", ");
   return q ? "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q) : null;
+}
+
+/** Address text without a pasted map link. */
+export function siteText(address: string | null, district: string | null): string {
+  return [isUrl(address) ? null : address, district].filter(Boolean).join(", ");
 }
 
 export function telHref(phone: string | null): string | null {
